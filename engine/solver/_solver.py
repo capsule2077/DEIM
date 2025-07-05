@@ -1,13 +1,13 @@
-import torch
-import torch.nn as nn
-
+import atexit
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
-import atexit
 
-from ..misc import dist_utils
+import torch
+import torch.nn as nn
+
 from ..core import BaseConfig
+from ..misc import dist_utils
 
 
 def to(m: nn.Module, device: str):
@@ -168,13 +168,17 @@ class BaseSolver(object):
         else:
             state = torch.load(path, map_location='cpu')
 
+
         module = dist_utils.de_parallel(self.model)
 
         # Load the appropriate state dict
         if 'ema' in state:
             pretrain_state_dict = state['ema']['module']
-        else:
+        elif 'model' in state:
             pretrain_state_dict = state['model']
+        else:
+            new_dict = {k[7:]: v for k, v in state.items()} 
+            pretrain_state_dict = new_dict
 
         # Adjust head parameters between datasets
         try:
@@ -196,6 +200,7 @@ class BaseSolver(object):
                 if v.shape == params[k].shape:
                     matched_state[k] = params[k]
                 else:
+                    print(v.shape, params[k].shape)
                     unmatched_list.append(k)
             else:
                 missed_list.append(k)

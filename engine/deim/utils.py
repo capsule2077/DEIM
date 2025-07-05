@@ -71,14 +71,12 @@ def deformable_attention_core_func(value, value_spatial_shapes, sampling_locatio
 
 
 def deformable_attention_core_func_v2(\
-    value: torch.Tensor,
+    value: torch.Tensor, 
     value_spatial_shapes,
-    sampling_locations: torch.Tensor,
-    attention_weights: torch.Tensor,
-    num_points_list: List[int],
-    method='default',
-    value_shape='default',
-    ):
+    sampling_locations: torch.Tensor, 
+    attention_weights: torch.Tensor, 
+    num_points_list: List[int], 
+    method='default'):
     """
     Args:
         value (Tensor): [bs, value_length, n_head, c]
@@ -90,14 +88,11 @@ def deformable_attention_core_func_v2(\
     Returns:
         output (Tensor): [bs, Length_{query}, C]
     """
-    # TODO find the version
-    if value_shape == 'default':
-        bs, n_head, c, _ = value[0].shape
-    elif value_shape == 'reshape':   # reshape following RT-DETR
-        bs, _, n_head, c = value.shape
-        split_shape = [h * w for h, w in value_spatial_shapes]
-        value = value.permute(0, 2, 3, 1).flatten(0, 1).split(split_shape, dim=-1)
+    bs, _, n_head, c = value.shape
     _, Len_q, _, _, _ = sampling_locations.shape
+        
+    split_shape = [h * w for h, w in value_spatial_shapes]
+    value_list = value.permute(0, 2, 3, 1).flatten(0, 1).split(split_shape, dim=-1)
 
     # sampling_offsets [8, 480, 8, 12, 2]
     if method == 'default':
@@ -107,34 +102,34 @@ def deformable_attention_core_func_v2(\
         sampling_grids = sampling_locations
 
     sampling_grids = sampling_grids.permute(0, 2, 1, 3, 4).flatten(0, 1)
-    sampling_locations_list = sampling_grids.split(num_points_list, dim=-2)
+    sampling_locations_list = sampling_grids.split(tuple(num_points_list), dim=-2)
 
     sampling_value_list = []
     for level, (h, w) in enumerate(value_spatial_shapes):
-        value_l = value[level].reshape(bs * n_head, c, h, w)
+        value_l = value_list[level].reshape(bs * n_head, c, h, w)
         sampling_grid_l: torch.Tensor = sampling_locations_list[level]
 
         if method == 'default':
             sampling_value_l = F.grid_sample(
-                value_l,
-                sampling_grid_l,
-                mode='bilinear',
-                padding_mode='zeros',
+                value_l, 
+                sampling_grid_l, 
+                mode='bilinear', 
+                padding_mode='zeros', 
                 align_corners=False)
-
+        
         elif method == 'discrete':
             # n * m, seq, n, 2
-            sampling_coord = (sampling_grid_l * torch.tensor([[w, h]], device=value_l.device) + 0.5).to(torch.int64)
+            sampling_coord = (sampling_grid_l * torch.tensor([[w, h]], device=value.device) + 0.5).to(torch.int64)
 
             # FIX ME? for rectangle input
-            sampling_coord = sampling_coord.clamp(0, h - 1)
-            sampling_coord = sampling_coord.reshape(bs * n_head, Len_q * num_points_list[level], 2)
+            sampling_coord = sampling_coord.clamp(0, h - 1) 
+            sampling_coord = sampling_coord.reshape(bs * n_head, Len_q * num_points_list[level], 2) 
 
-            s_idx = torch.arange(sampling_coord.shape[0], device=value_l.device).unsqueeze(-1).repeat(1, sampling_coord.shape[1])
+            s_idx = torch.arange(sampling_coord.shape[0], device=value.device).unsqueeze(-1).repeat(1, sampling_coord.shape[1])
             sampling_value_l: torch.Tensor = value_l[s_idx, :, sampling_coord[..., 1], sampling_coord[..., 0]] # n l c
 
             sampling_value_l = sampling_value_l.permute(0, 2, 1).reshape(bs * n_head, c, Len_q, num_points_list[level])
-
+        
         sampling_value_list.append(sampling_value_l)
 
     attn_weights = attention_weights.permute(0, 2, 1, 3).reshape(bs * n_head, 1, Len_q, sum(num_points_list))
@@ -142,6 +137,7 @@ def deformable_attention_core_func_v2(\
     output = weighted_sample_locs.sum(-1).reshape(bs, n_head * c, Len_q)
 
     return output.permute(0, 2, 1)
+
 
 
 def get_activation(act: str, inpace: bool=True):

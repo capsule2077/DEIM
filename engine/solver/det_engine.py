@@ -7,18 +7,18 @@ Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 """
 
 
-import sys
 import math
+import sys
 from typing import Iterable
 
 import torch
 import torch.amp
-from torch.utils.tensorboard import SummaryWriter
 from torch.cuda.amp.grad_scaler import GradScaler
+from torch.utils.tensorboard import SummaryWriter
 
-from ..optim import ModelEMA, Warmup
 from ..data import CocoEvaluator
 from ..misc import MetricLogger, SmoothedValue, dist_utils
+from ..optim import ModelEMA, Warmup
 
 
 def train_one_epoch(self_lr_scheduler, lr_scheduler, model: torch.nn.Module, criterion: torch.nn.Module,
@@ -47,7 +47,7 @@ def train_one_epoch(self_lr_scheduler, lr_scheduler, model: torch.nn.Module, cri
 
         if scaler is not None:
             with torch.autocast(device_type=str(device), cache_enabled=True):
-                outputs = model(samples, targets=targets)
+                outputs = model(samples, targets=targets)[0]
 
             if torch.isnan(outputs['pred_boxes']).any() or torch.isinf(outputs['pred_boxes']).any():
                 print(outputs['pred_boxes'])
@@ -76,7 +76,7 @@ def train_one_epoch(self_lr_scheduler, lr_scheduler, model: torch.nn.Module, cri
             optimizer.zero_grad()
 
         else:
-            outputs = model(samples, targets=targets)
+            outputs = model(samples, targets=targets)[0]
             loss_dict = criterion(outputs, targets, **metas)
 
             loss : torch.Tensor = sum(loss_dict.values())
@@ -141,7 +141,7 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessor, 
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        outputs = model(samples)
+        outputs = model(samples)[0]
 
         orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
 

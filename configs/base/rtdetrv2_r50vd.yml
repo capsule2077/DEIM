@@ -29,7 +29,7 @@ PResNet:
   num_stages: 4
   freeze_norm: True
   pretrained: True 
-  local_model_dir: ../RT-DETR-main/rtdetrv2_pytorch/INK1k/
+  local_model_dir: /data/liulongfei/OV-DEIM-COCO/RT-DETR-main/rtdetrv2_pytorch/INK1k/
 
 
 HybridEncoder:
@@ -49,7 +49,7 @@ HybridEncoder:
   expansion: 1.0
   depth_mult: 1
   act: 'silu'
-  version: rt_detrv2    # pay attention to this
+  version: v2    # pay attention to this
 
 
 RTDETRTransformerv2:
