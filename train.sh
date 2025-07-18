@@ -109,8 +109,7 @@ declare -A DATASET_CLASSES=(
 
 
 for DATA_PATH in "$DATA_DIR"/*; do
-    DATA_NAME=$(basename "$DATA_PATH")        
-    NAME_NO_EXT="${DATA_NAME%.*}"            
+    DATA_NAME=$(basename "$DATA_PATH")                   
     SAVE_PATH="$SAVE_ROOT/$DATA_NAME"
 
     TRAIN_IMG_FOLDER="$DATA_PATH/train"
@@ -118,7 +117,7 @@ for DATA_PATH in "$DATA_DIR"/*; do
     VAL_IMG_FOLDER="$DATA_PATH/valid"
     VAL_ANN_FILE="$DATA_PATH/valid/_annotations.coco.json"
 
-    NUM_CLASSES=${DATASET_CLASSES[$NAME_NO_EXT]}
+    NUM_CLASSES=${DATASET_CLASSES[$DATA_NAME]}
     
     echo "$SAVE_PATH"
 
